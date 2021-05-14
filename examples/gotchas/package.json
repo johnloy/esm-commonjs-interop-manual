@@ -1,16 +1,16 @@
 {
   "scripts": {
-    "build": "run-s -sn clean build:*",
+    "build": "run-s -scn clean build:*",
     "clean": "rm -rf */transpiled/*",
     "build-all": "for d in `bash -c -O extglob 'echo !(node_modules)/'`; do d=$d npm run $script; done",
     "report": "for f in `echo */transpiled/*/*.js`; do echo \"// node $f\" && node $f && echo; done",
     "build:babel": "export script=babel; npm run build-all",
-    "build-typescript": "export script=typescript; npm run build-all",
-    "build-rollup": "export script=rollup; npm run build-all",
+    "build:typescript": "export script=typescript; npm run build-all",
+    "build:rollup": "export script=rollup; npm run build-all",
     "build:webpack": "export script=webpack; npm run build-all",
     "babel": "export d=$d; cd $d && babel --config-file ../babel.config.json --keep-file-extension entry -d transpiled/babel && npm run rename-mjs",
-    "typescript": "",
-    "rollup": "",
+    "typescript": "cd $d && tsc entry/*.js --target es2018 --module commonjs --allowJs --outDir transpiled/typescript --esModuleInterop",
+    "rollup": "export d=$d; cd $d && rollup -c ../rollup.config.js && npm run rename-mjs",
     "webpack": "export d=$d; cd $d && webpack -c ../webpack.config.js && npm run rename-mjs",
     "rename-mjs": "find \"$d\"transpiled/$script -name '*.mjs' -exec sh -c 'mv \"$0\" \"$0\".js' {} \\;"
   },
@@ -21,9 +21,12 @@
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
     "babel-plugin-dynamic-import-node": "^2.3.3",
+    "globby": "^11.0.3",
     "npm-run-all": "^4.1.5",
+    "prettier": "^2.3.0",
     "rename-cli": "^7.0.2",
     "rollup": "^2.47.0",
+    "typescript": "^4.2.4",
     "webpack-cli": "^4.7.0",
     "webpack-merge": "^5.7.3"
   }
