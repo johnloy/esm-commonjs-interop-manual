@@ -5,13 +5,16 @@
 ![Let's all get along](assets/puppy-and-kitty.jpg)<br/>
 <sub>Photo by [Krista Mangulsone](https://unsplash.com/photos/9gz3wfHr65U) on [Unsplash](https://unsplash.com/)<sub>
 
+> "Human sacrifice! Dogs and cats living together! Mass hysteria!"
+> — <cite><a href="https://www.imdb.com/title/tt0087332/">Bill Murray<a></cite>
+
 ---
 
 **Contents**
 
 - [$#@&%*!](#intro)
 - [Possible interop scenarios and factors](#scenarios)
-- [Addendum: Why and How to Go ESM-first](#addendum)
+- :sparkles: [Addendum: Why and How to Go ESM-first](#addendum)
 
 ---
 
@@ -105,9 +108,7 @@ Browsers don't yet have this capability, though likely will soon, as well as the
 
 <a name="addendum">
 
-## Addendum: Why and How to Go ESM First
-
-## Addendum: Why and how to go ESM-first
+## :sparkles: Addendum: Why and how to go ESM-first
 
 You no longer *need* bundling, or even any kind of of build step, any more during web development, thanks to [broad browser support](https://caniuse.com/?search=javascript%20modules) of ESM, and modern tooling to help take advantage of that. Of course, for production, bundling is still optimal for performance reasons.
 
@@ -123,9 +124,11 @@ Unfortunately, in spite of great browser support, one still can't often blithely
 
 Several kinds of tools are emerging to overcome the interop obstacle, as well as to layer back on DX ergonomics missing from the vanilla ESM web development experience:
 
-- Buildless dev servers
-- ESM-friendly CDNs
-- Dependency pre-building
+- [Buildless dev servers](#buildess)
+- [ESM-friendly CDNs](#cdns)
+- [Dependency pre-building](#pre-building)
+
+<a name="buildless">
 
 ### Buildess dev servers
 
@@ -137,6 +140,8 @@ Buildless dev servers in essence leave separate modules as such during developme
 
 To varying degrees these each also support on-demand code transformations making import-anything, HMR, environment variable injection, and cross-browser support possible. These transformations occur only when files are requested by the browser from the dev server, which when combined with caching makes rebuilds extremely fast after code changes.
 
+<a name="cdns">
+
 ### ESM friendly CDNs
 
 ESM-friendly CDNs provide urls for loading ESM versions of packages directly into a browser using `<script type="module" src="...">` and `<script type="module"> import from "..." </script>`. Noteworthy current choices for these include:
@@ -146,8 +151,7 @@ ESM-friendly CDNs provide urls for loading ESM versions of packages directly int
 - [JSPM](https://jspm.org/docs/cdn)
 - [Unpkg](https://unpkg.com/)
 
->  ℹ️ NOTE
-> You might notice the popular [cdnjs](https://cdnjs.com/) missing from this list. At the moment, it doesn't appear to directly support ESM, only IIFE and UMD.
+>  ℹ️ You might notice the popular [cdnjs](https://cdnjs.com/) missing from this list. At the moment, it doesn't appear to directly support ESM, only IIFE and UMD.
 
 Using these CDNs makes it possible to avoid installing and bundling dependency packages altogether, if that's acceptable for your application hosting needs. At a minimum these support the ability of a loaded module to subsequently load its full dependency graph. Most of them, however, also provide automatic conversion of CJS to ESM,  as well as production-oriented performance optimizations like:
 - minification
@@ -156,6 +160,8 @@ Using these CDNs makes it possible to avoid installing and bundling dependency p
 - ES waterfall optimization (mod1 loads mod2 loads mod3…)
 
 One very intriguing optimization, only supported by JSPM right now, is utilizing the capability of ES module import maps (currently only supported by Chrome) to enable [perfect individual caching of both dependent and dependency modules](https://jspm.org/import-map-cdn#module-cdns).
+
+<a name="pre-building">
 
 ### Dependency pre-building
 
