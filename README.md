@@ -18,7 +18,7 @@
 
 ---
 
-<a name="intro">
+<a name="intro"></a>
 
 ## $#@&%*!
 
@@ -40,7 +40,7 @@ For those JavaScript developers impatient to get beyond the mess of interop and 
 
 ---
 
-<a name="scenarios">
+<a name="scenarios"></a>
 
 ## Possible interop scenarios and factors
 
@@ -82,39 +82,39 @@ Browsers don't yet have this capability, though likely will soon, as well as the
 
 ---
 
-<a name="package-json>
+<a name="package-json"></a>
 
 ## The role of package.json in interop
 
 ---
 
-<a name="differences">
+<a name="differences"></a>
 
 ## Differences between ESM and CJS that cause interop trouble
 
 ---
 
-<a name="transpilation">
+<a name="transpilation"></a>
 
 ## How code is transformed transpiling between ESM and CJS
 
 ---
 
-<a name="gotchas-and-practices">
+<a name="gotchas-and-practices"></a>
 
 ## Gotchas , practices to avoid, and best practices
 
 ---
 
-<a name="addendum">
+<a name="addendum"></a>
 
 ## :sparkles: Addendum: Why and how to go ESM-first
 
-You no longer *need* bundling, or even any kind of of build step, any more during web development, thanks to [broad browser support](https://caniuse.com/?search=javascript%20modules) of ESM, and modern tooling to help take advantage of that. Of course, for production, bundling is still optimal for performance reasons.
+You no longer *need* bundling, or even any kind of of build step, any more during web development, thanks to [broad browser support](https://caniuse.com/?search=javascript%20modules) of ESM, and [modern tooling](https://modern-web.dev/) to help take advantage of that. Of course, for production, bundling is still probably [optimal for performance reasons](https://v8.dev/features/modules#performance), at least until [resource bundling](https://github.com/WICG/resource-bundles) is possible (part of an emerging suite of standards to support better [website packaging](https://github.com/WICG/webpackage)).
 
-Likewise, since [full ESM support](https://nodejs.org/api/esm.html) arrived in Node 12, you've not needed a build step if you wanted to mix and match ESM and CJS. [Deno](https://deno.land/manual/examples/import_export), if you're living on the edge, has offered ESM support since its inception.
+Likewise, since full ESM support [arrived in Node v13](https://nodejs.medium.com/announcing-core-node-js-support-for-ecmascript-modules-c5d6dc29b663), you've not needed a build step if you wanted to mix and match ESM and CJS in Node. [Deno](https://deno.land/manual/examples/import_export), if you're living on the edge, has offered ESM support since its inception.
 
-These days, it's possible to start and end JavaScript development using only ESM throughout.
+These days, it's *possible* to start and end JavaScript development using only ESM throughout.
 
 ## ESM-first with browsers
 
@@ -128,7 +128,7 @@ Several kinds of tools are emerging to overcome the interop obstacle, as well as
 - [ESM-friendly CDNs](#cdns)
 - [Dependency pre-building](#pre-building)
 
-<a name="buildless">
+<a name="buildless"></a>
 
 ### Buildess dev servers
 
@@ -140,7 +140,7 @@ Buildless dev servers in essence leave separate modules as such during developme
 
 To varying degrees these each also support on-demand code transformations making import-anything, HMR, environment variable injection, and cross-browser support possible. These transformations occur only when files are requested by the browser from the dev server, which when combined with caching makes rebuilds extremely fast after code changes.
 
-<a name="cdns">
+<a name="cdns"></a>
 
 ### ESM friendly CDNs
 
@@ -161,7 +161,7 @@ Using these CDNs makes it possible to avoid installing and bundling dependency p
 
 One very intriguing optimization, only supported by JSPM right now, is utilizing the capability of ES module import maps (currently only supported by Chrome) to enable [perfect individual caching of both dependent and dependency modules](https://jspm.org/import-map-cdn#module-cdns).
 
-<a name="pre-building">
+<a name="pre-building"></a>
 
 ### Dependency pre-building
 
