@@ -44,21 +44,21 @@ For those JavaScript developers impatient to get beyond the mess of interop and 
 
 ## Possible interop scenarios and factors
 
-There's only one scenario where module interop doesn't come into play. That is when authoring ESM, with no dependencies, or only ESM dependencies, and targeting execution in browsers or versions of Node supporting ESM ([fully enabled in v13](https://nodejs.medium.com/announcing-core-node-js-support-for-ecmascript-modules-c5d6dc29b663)). As a developer you'll most likely encounter this scenario authoring libraries targeted at modern browsers, like [libraries](https://lit.dev/) and [web components](https://shoelace.style/). Check out the [addendum](#addendum) to this document for more on this promised land.
+There's only one scenario where module interop doesn't come into play. That is when authoring ESM, with no dependencies, or only ESM dependencies, and targeting execution in browsers or [versions of Node supporting ESM](https://nodejs.medium.com/announcing-core-node-js-support-for-ecmascript-modules-c5d6dc29b663) ([Examples](./examples/scenarios/esm-only/README.md) :eyes:). As a developer you'll most likely encounter this scenario authoring libraries targeted at modern browsers, like [libraries](https://lit.dev/) and [web components](https://shoelace.style/). Check out the [addendum](#addendum) to this document for more on this promised land.
 
 All remaining scenarios are some variation of authoring ESM with dependencies on CJS or a mixture of ESM and CJS. What this means is that, at least until a good majority of [NPM packages migrate away from CJS](https://blog.sindresorhus.com/get-ready-for-esm-aa53530b3f77), module interop will remain an unavoidable fact of life. Module interop scenarios include:
 
-1. running a real ESM module in Node importing a real CJS module;
-2. running a real ESM module in Node importing a transpiled, or "faux", ESM module (really CJS, with interop code transformations);
-3. running a faux CJS module in Node, with dependencies on CJS and/or ESM modules and/or packages;
-4. running an IIFE bundle script in a browser, with dependencies on CJS and/or ESM modules and/or packages;
-5. and running a real ESM bundle module in a browser with dependencies on CJS and/or ESM modules and/or packages.
+1. running a real ESM module in Node importing a real CJS module ([Examples](examples/scenarios/esm-importing-cjs/README.md) :eyes:);
+2. running a real ESM module in Node importing a transpiled, or "faux", ESM module, which is really CJS with interop code transformations ([Examples](examples/scenarios/esm-importing-faux/README.md) :eyes:);
+3. running a faux CJS module in Node, with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/faux-in-node/README.md) :eyes:);
+4. running an IIFE bundle script in a browser, with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/iife-in-browser/README.md) :eyes:);
+5. and running a real ESM bundle module in a browser with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/esm-in-browser/README.md) :eyes:).
 
-Examples are provided in this repo to demonstrate what you can expect in each of these scenarios.
+[Examples](./examples/scenarios/README.md) are provided in this repo to demonstrate what you can expect in each of these scenarios.
 
 ### Common factors
 
-In scenarios 1-6 above, there's a factor affecting module interop of whether transitive dependencies (dependencies of dependencies, on down) are ESM, transpiled or "[faux](https://github.com/rollup/plugins/issues/635#issuecomment-723177958)" ESM (CJS under the hood), or vanilla CJS (including UMD, which [fully works as CJS](https://github.com/umdjs/umd/blob/master/templates/commonjsAdapter.js)), and if they are faux ESM, which tool and tool settings were used to transpile.
+In scenarios 1-6 above, there's a factor affecting module interop of whether transitive imports (imports in imports, on down) in application code are ESM, transpiled or "[faux](https://github.com/rollup/plugins/issues/635#issuecomment-723177958)" ESM (CJS under the hood), or vanilla CJS (including UMD, which [fully works as CJS](https://github.com/umdjs/umd/blob/master/templates/commonjsAdapter.js)), and if they are faux ESM, which tool and tool settings were used to transpile.
 
 In scenarios 4 and 5 above there's occassionally an additional factor of whether the transpilation entry file (e.g. `entry` config setting in Webpack) has a `.js` or `.mjs` extension. The Babel and Webpack tools vary how they transpile to CJS when the entry file ends in `.mjs`, to attempt to match Node's behavior when importing CJS into ESM.
 
