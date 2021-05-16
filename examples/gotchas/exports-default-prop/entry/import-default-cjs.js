@@ -10,3 +10,6 @@ console.log(
     }
   )
 );
+
+export default 'blah'
+export const blerg = 'blerg'

@@ -32,7 +32,7 @@ Still, it's consequential in the modern JS ecosystem for two reasons:
 
 Put another way, developers want to pretend everything is ESM and that it "just works". Unfortunately, however, it doesn't always.
 
-While you certainly can use a tool that hides away and handles interop concerns for you through encapsulated configuration of transpilation tools, as many [front-end](https://create-react-app.dev/docs/supported-browsers-features) and [full-stack](https://nextjs.org/docs/advanced-features/customizing-babel-config) app framework build tools do, understanding the issues and solutions regarding module interop illuminates what those tools do under the hood. Knowledge is power, should something not work as expected. It also informs you to be selective and intentional about your tools, choosing the most appropriate one/s for a given use case (for example, bundlers aren't best suited when publishing a Node library).
+While you certainly can use a tool that hides away and handles interop concerns for you through encapsulated configuration of transpilation tools (Babel, TypeScript, bundlers, etc.), as many [front-end](https://create-react-app.dev/docs/supported-browsers-features) and [full-stack](https://nextjs.org/docs/advanced-features/customizing-babel-config) app framework build tools do, understanding the issues and solutions regarding module interop illuminates what those tools do under the hood. Knowledge is power, should something not "just work", which is bound to happen occassionally, given the [vast set](https://sokra.github.io/interop-test/) of interop factors and possible scenarios. It also informs you to be selective and intentional about your tools, choosing the most appropriate one/s for a given use case (for example, bundlers aren't best suited when publishing a Node library).
 
 This article attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript  development tools.
 
@@ -40,25 +40,67 @@ For those JavaScript developers impatient to get beyond the mess of interop and 
 
 ---
 
+<a name="about"></a>
+
+## How this material is organized
+
+For an appreciation of why module interop is so confusing, take a look at the [interop tests](https://sokra.github.io/interop-test/) maintained by [Tobias Koppers](https://twitter.com/wsokra), creator of Webpack. The number of factors involved, and resulting set of possibilities, is vast. And, these tests don't even cover all the transpilation and bundling tools in use right now.
+
+Luckily, it's possible to roughly boil down the possibilities into something mere humans can grasp, expressed through a conceptual framework:
+
+- **Use cases:** the thing being built (e.g. browser application, package, node application)
+
+- **Run scenarios:** the execution environment and what is being executed
+
+- **Considerations:** gotchas, practices to avoid, and best practices
+
+Use cases and run scenarios are just two different perspectives on interop. The former is how you, a developer, deal with it, and is discussed here primarily in a how-to or recipe manner, centering on  tools and their configuration. The latter is a systematic breakdown of discrete sets of interop factors, and is probably most useful for diagnosing what's going on when interop fails to "just work".
+
+In the context of presenting a given use case or run scenario, considerations are called out
+
+---
+
+<a name="use-cases"></a>
+
+## Use cases
+
+---
+
 <a name="scenarios"></a>
 
-## Possible interop scenarios and factors
+## Run scenarios
 
-There's only one scenario where module interop doesn't come into play. That is when authoring ESM, with no dependencies, or only ESM dependencies, and targeting execution in browsers or [versions of Node supporting ESM](https://nodejs.medium.com/announcing-core-node-js-support-for-ecmascript-modules-c5d6dc29b663) ([Examples](./examples/scenarios/esm-only/README.md) :eyes:). As a developer you'll most likely encounter this scenario authoring libraries targeted at modern browsers, like [libraries](https://lit.dev/) and [web components](https://shoelace.style/). Check out the [addendum](#addendum) to this document for more on this promised land.
+There's only one scenario where module interop doesn't come into play. That is when running ESM, with no imports, or only ESM imports, in browsers or [versions of Node supporting ESM](https://nodejs.medium.com/announcing-core-node-js-support-for-ecmascript-modules-c5d6dc29b663). As a developer you'll most likely encounter this scenario when producing or consuming a library targeting modern browsers, like [Lit](https://lit.dev/), or [web components](https://shoelace.style/).
 
-All remaining scenarios are some variation of authoring ESM with dependencies on CJS or a mixture of ESM and CJS. What this means is that, at least until a good majority of [NPM packages migrate away from CJS](https://blog.sindresorhus.com/get-ready-for-esm-aa53530b3f77), module interop will remain an unavoidable fact of life. Module interop scenarios include:
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.40/dist/components/dialog/dialog.js">
+<script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.40/dist/components/button/button.js">
 
-1. running a real ESM module in Node importing a real CJS module ([Examples](examples/scenarios/esm-importing-cjs/README.md) :eyes:);
-2. running a real ESM module in Node importing a transpiled, or "faux", ESM module, which is really CJS with interop code transformations ([Examples](examples/scenarios/esm-importing-faux/README.md) :eyes:);
-3. running a faux CJS module in Node, with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/faux-in-node/README.md) :eyes:);
-4. running an IIFE bundle script in a browser, with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/iife-in-browser/README.md) :eyes:);
-5. and running a real ESM bundle module in a browser with dependencies on CJS and/or ESM modules and/or packages ([Examples](examples/scenarios/esm-in-browser/README.md) :eyes:).
+<sl-dialog label="Dialog" class="dialog-width" style="--width: 50vw;">
+  Web components are the future!
+  <sl-button slot="footer" type="primary">OK</sl-button>
+</sl-dialog>
+```
 
-[Examples](./examples/scenarios/README.md) are provided in this repo to demonstrate what you can expect in each of these scenarios.
+Because not all CJS packages on NPM have been migrated to ESM, you're unlikely to encounter this scenario when only developing for Node (someday, though…).
+
+All remaining scenarios are some variation of running ESM or CJS with dependencies on the opposite module format or a mixture of formats. What this means is that, at least until a good majority of [NPM packages migrate away from CJS](https://blog.sindresorhus.com/get-ready-for-esm-aa53530b3f77), module interop will remain an unavoidable fact of life.
+
+Module interop scenarios are listed below, ordered most common to least (according to the author's totally unscientific ranking).
+
+- **Running an IIFE bundle script (e.g. Webpack) in a browser, of an application authored in ESM, with CJS dependencies in the dependency graph.**<br>
+  This is the most common interop scenario of bundling for broad cross-browser support.
+
+- **Running either an ESM or CJS module in Node, importing transpiled "[faux](https://github.com/rollup/plugins/issues/635#issuecomment-723177958)" ESM modules.**<br>
+  Such modules are really CJS, but transpiled to include interop code transformations and possibly also interop helper functions. They are intended for use in toolchains involving transpilers, as those tools are equipped with smarts to treat faux modules as though they were real ESM modules. Node, however, does not have such smarts, and simply treats faux modules as CJS, resulting in awkward and unexpected import/require semantics (explained in more detail under the gotchas section). This scenario happens most often when consuming CJS Node libraries authored in TypeScript by developers unaware .
+
+- **Running a real ESM bundle module in a browser, with CJS dependencies in the dependency graph.**<br>
+  This is an increasingly common scenario of bundling for modern browsers with ESM support.
+
+- **Running a real ESM module in Node, importing real CJS modules.**<br>
+  This scenario is likely to occur when writing ESM Node apps (e.g. a server) without transpilation, as long as many NPM packages continue to be published as CJS only.
 
 ### Common factors
-
-In scenarios 1-6 above, there's a factor affecting module interop of whether transitive imports (imports in imports, on down) in application code are ESM, transpiled or "[faux](https://github.com/rollup/plugins/issues/635#issuecomment-723177958)" ESM (CJS under the hood), or vanilla CJS (including UMD, which [fully works as CJS](https://github.com/umdjs/umd/blob/master/templates/commonjsAdapter.js)), and if they are faux ESM, which tool and tool settings were used to transpile.
 
 In scenarios 4 and 5 above there's occassionally an additional factor of whether the transpilation entry file (e.g. `entry` config setting in Webpack) has a `.js` or `.mjs` extension. The Babel and Webpack tools vary how they transpile to CJS when the entry file ends in `.mjs`, to attempt to match Node's behavior when importing CJS into ESM.
 
@@ -103,6 +145,8 @@ Browsers don't yet have this capability, though likely will soon, as well as the
 <a name="gotchas-and-practices"></a>
 
 ## Gotchas , practices to avoid, and best practices
+
+This scenario occurs when Node library authors using a `default` export transpile from ESM before publishing as CJS, using TypeScript for example, but consumers of the library are expecting vanilla CJS.
 
 ---
 
