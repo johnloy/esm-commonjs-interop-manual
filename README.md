@@ -11,6 +11,7 @@
 ---
 
 **Contents**
+
 - [$#@&%*!](#intro)
 - [How this material is organized](#about)
 - [Differences between ESM and CJS that cause interop problems](#differences)
@@ -134,10 +135,17 @@ Crucial context about gotchas, dos, and don'ts, is also provided in the immediat
 
 ## Build cases
 
-- Browser application
-- Universal application
-- Node application
-- Node package
+As mentioned in the addendum, Node's native ESM support since v13 makes it possible to not need a build step at all for interop, at least not when authoring Node applications. It's not too painful to run untranspiled [ESM in Node and import a mixture of ESM and CJS dependencies](#run-esm-node-import-cjs) ([avoid the reverse](#dont-run-cjs-with-esm-deps)). Just be aware of gotchas, dos, and don'ts.
+
+Targeting browsers and Node versions lt v13 is another story. These cases invariably involve a mixture of ESM and CJS modules, but can only target CJS, for Node, and IIFEs, for browsers. All traces of ESM need to get transpiled.
+
+- [Browser application](#browser-application)
+
+- [Universal application](#universal-application) (for SSR)
+
+- [Node application](#node-application)
+
+- [Node package](#node-package)
 
 ---
 
@@ -193,15 +201,15 @@ Module interop cases are listed below, ordered most common to least (according t
 
 - [**ESM or CJS, in Node, importing "faux" ESM modules**](#run-import-faux)
 
-- [**ESM, in the browser, with mixed ESM/CJS dependencies**](#run-esm-node-import-cjs)
+- [**ESM, in the browser, with mixed ESM/CJS dependencies**](#run-esm-browser)
 
 - [**ESM, in Node, importing CJS (not faux)**](#run-esm-node-import-cjs)
 
-While running CJS and importing real ESM is theoretically another run case, it's not advisable for Node development, because imports of ESM into CJS are always async, accessed by way of promises returned from dynamic `import()`. Just bypass interop headaches, as well as the coordination necessary when introduing async into your logic, and use CJS throughout. If you do find yourself wanting to import ESM into CJS, however, the [Node ESM docs](https://nodejs.org/api/esm.html#esm_import_expressions) can tell you all you need to know.
+While running CJS and importing real ESM is theoretically another run case, it's [not advisable for Node development](#dont-run-cjs-with-esm-deps), If you do find yourself wanting to import ESM into CJS, however, the [Node ESM docs](https://nodejs.org/api/esm.html#esm_import_expressions) can tell you all you need to know.
 
-One understandable use case involving CJS importing ESM is authoring configuration in ESM for development tools, like test runners, that haven't yet been made ESM-friendly. This might be desirable if the bulk of your project is written in ESM, and you want tool configuration to be able to consume some of your modules (a constants module, for example).
+One understandable use case involving CJS importing ESM, though, is authoring configuration in ESM for development tools, like test runners, that haven't yet been made ESM-friendly. This might be desirable if the bulk of your project is written in ESM, and you want tool configuration to be able to consume some of your modules (a constants module, for example).
 
-One additional run case is included below for this, **[ESM configs for CJS tools](#run-esm-configs-cjs-tools)**.
+An additional run case is included below for this, **[ESM configs for CJS tools](#run-esm-configs-cjs-tools)**.
 
 ---
 
@@ -247,7 +255,7 @@ This scenario is likely to occur when writing ESM Node apps (e.g. a server) with
 
 ## Gotchas, dos, and don'ts
 
-### Gotcha: ESM import specifiers require a file extension
+### :warning: ESM import specifiers need a file extension, but extensions are resolved for CJS
 
 ...
 
@@ -255,11 +263,15 @@ This scenario is likely to occur when writing ESM Node apps (e.g. a server) with
 import foo from 'foo.cjs'
 ```
 
-### Gotcha: Node doesn't require file extensions in ESM for packages
+### :warning: Node doesn't require file extensions in ESM for packages
 
 ...
 
-### Gotcha: Dynamic `import()` caches based on URL, not module
+### :warning: The same ESM import specifier might not work both in Node and browsers
+
+...
+
+### :warning: Dynamic `import()` caches based on URL, not module
 
 ...
 
@@ -267,17 +279,19 @@ import foo from 'foo.cjs'
 import()
 ```
 
-### Gotcha: CJS executes top-level code immediately (synchronously), and ESM asynchronously
+### :warning: Bundlers don't understand the Node-only workaround to `require()` in ESM
 
-### Gotcha: Transpiling ESM to CJS changes `import()` behavior
+### :warning: Node interprets `exports.foo = 'foo'` and `module.exports = { foo: 'foo' }` differently importing into ESM
+
+### :warning: Transpiling ESM to CJS changes `import()` behavior
 
 The `import()` syntax is converted to a `require()` wrapped in a promise. That means, if the imported module isn't also transpiled, it can't be required, because `import()` always expects its specifier to refer to an ESM module. Also, ESM and CJS use differednt import/require caches and caching behaviors.
 
-### Gotcha: YMMV importing JSON
+### :warning: YMMV importing JSON
 
 CJS could always [import JSON files](https://nodejs.org/api/modules.html#modules_require_id) with `require('file.json')`, while support for this in ESM in Node is [currently experimental](https://nodejs.org/api/esm.html#esm_json_modules), and simply non-existent in browsers (though a [feature proposal](https://github.com/tc39/proposal-json-modules) has been put forward, and [a shim](https://github.com/guybedford/es-module-shims#fetch-hook) exists).
 
-### Gotcha: YMMV importing WebAssembly
+### :warning: YMMV importing WebAssembly
 
 Only ESM import semantics can directly support WebAssembly as a module, because WebAssembly instantiation is asynchronous (CommonJS dependency resolution is synchronous).
 
@@ -285,36 +299,45 @@ In CommonJS, the Node [WebAssembly global](https://nodejs.org/api/globals.html#g
 
 Browsers don't yet have this capability, though likely will soon, as well as the [ability to load `.wasm` using script tags](https://github.com/WebAssembly/esm-integration/tree/master/proposals/esm-integration), `<script type="module" src="./app.wasm">`. Until that time, if you wish to take advantage of the ESM `.wasm` import syntax, you'll need to involve a build step, as with [Rollup](https://rollupjs.org/) in conjunction with [@rollup/plugin-wasm](https://github.com/rollup/plugins/tree/master/packages/wasm) or something like [wasm-pack](https://rustwasm.github.io/docs/wasm-pack/commands/build.html#target) to [wrap WASM instantiation](https://rustwasm.github.io/wasm-bindgen/examples/without-a-bundler.html).
 
-### Do: Use the `main` and `module` package.json fields when publishing a hybrid package intended for web bundling
+### :white_check_mark: Do use the `main` and `module` package.json fields when publishing a hybrid package intended for web bundling
 
 ...
 
-### Do: Use package.json conditional `exports` mappings when publishing a hybrid package intended for Node
+### :white_check_mark: Do use package.json conditional `exports` mappings when publishing a hybrid package intended for Node
 
 ...
 
-### Do: Use an .mjs extension for entry files when transpiling for Node
+### :white_check_mark: Do use an .mjs extension for entry files when transpiling for Node
 
 In scenarios 4 and 5 above there's occassionally an additional factor of whether the transpilation entry file (e.g. `entry` config setting in Webpack) has a `.js` or `.mjs` extension. The Babel and Webpack tools vary how they transpile to CJS when the entry file ends in `.mjs`, to attempt to match Node's behavior when importing CJS into ESM.
 
-### Do: Use a .js extension for entry files when transpiling for browsers
+### :white_check_mark: Do use a .js extension for entry files when transpiling for browsers
 
 ...
 
-### Do: Publish a migration to ESM (or dual module support) as a semver major change
+### :white_check_mark: Do publish a migration to ESM (or dual module support) as a semver major change
 
 ...
 
-### Don't: Treat properties of `module.exports` in a CJS module imported into ESM as named exports
+### :no_entry_sign: Don't treat properties of `module.exports` in a CJS module imported into ESM as named exports
 
 ...
 
-### Don't: Use both default and named exports for a package when transpiling ESM to CJS
+### :no_entry_sign: Don't use both default and named exports for a package when transpiling ESM to CJS
 
 This scenario occurs when Node library authors using a `default` export transpile from ESM before publishing as CJS, using TypeScript for example, but consumers of the library are expecting vanilla CJS.
 
-### Don't: Use `"type": "module"` in the project root package.json for hybrid packages
+https://remarkablemark.org/blog/2020/05/05/typescript-export-commonjs-es6-modules/
 
+### :no_entry_sign: Don't use `"type": "module"` in the project root package.json for hybrid packages
+
+...
+
+<a name="dont-run-cjs-with-esm-deps"></a>
+
+### :no_entry_sign: Don't run a CJS application in Node with ESM dependencies
+
+Because imports of ESM into CJS are always async, accessed by way of promises returned from dynamic `import()`, ESM imports can never function like top-level declarative dependencies (e.g. `require() calls at the top of a CJS module). Save yourself interop headaches, as well as the coordination necessary when introducing async into your logic, and just use CJS throughout.
 
 ---
 
