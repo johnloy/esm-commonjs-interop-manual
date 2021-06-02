@@ -153,6 +153,25 @@ Targeting browsers and Node versions lt v13 is another story. These cases invari
 
 ## Build case: Browser application
 
+Chances are, as a JavaScript developer you most often encounter module interop when developing web applications for execution in the browser. This is because you likely author those using ESM syntax, but depend on packages from NPM, a majority of which are currently published as CJS or UMD modules (the JS ones, anyway).
+
+Browsers do not understand CJS, however, so need to transpile and normalize all modules used, regardless of original format, to one of:
+
+a. A single bundle file with an IIFE (Immediately Invoked Function Expression) wrapper (example)
+b. Multiple bundled and code-split files with IIFE wrappers, in tandem with a module loader "runtime" (example)
+c. A single ESM bundle file (example)
+d. Multiple bundled and code-split ESM files (example)
+
+Module normalization occurs when a transpiler or bundler traverses a codebase, starting at entrypoint files, to read it into a graph of dependencies.  While doing this, the code of source files is parsed into an [AST (Abstract Syntax Tree)](https://astexplorer.net/#/gist/3aa601cf2aa498ab692d6d680fc26962/0fc5dc8feff3c4628687d0080f5931848be763f3) held in memory, and from this representation transformed and combined into the final faux modules output. Both Webpack and Rollup use Acorn.
+
+Using the popular Webpack and Parcel bundlers, all traces of both ESM and CJS get wiped out in the final bundle output. They are replaced with faux modules, implemented using function scoping and a custom module cache in a bundler "[runtime](https://gist.github.com/johnloy/c7faabf72b358f8bc96ef9699031643e#file-bundle-js-L34-L88)". So, at the time application code executes in browsers, ESM-CJS interop is no longer a concern.
+
+
+With the advent of widespread browser support of ESM (that is [*now*](https://caniuse.com/?search=javascript%20modules), btw), faux module runtimes aren't necessary for every application. Simply publish as ESM, if you don't need to support older browsers, like IE 11. Of course, for performance reasons, it's still desirable to combine many modules into fewer for production, and CJS dependency packages somehow need to get converted to ESM in the process.
+
+The [Rollup](https://rollupjs.org/) bundler was [conceived to do precisely this](https://survivejs.com/blog/rollup-interview/).
+
+
 ---
 
 <a name="universal-application"></a>
