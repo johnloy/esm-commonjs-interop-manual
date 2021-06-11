@@ -12,7 +12,8 @@
 
 **Contents**
 
-- [$#@&%*!](#intro)
+- [Why care?](#intro)
+- [TL;DR](#tldr)
 - [How this material is organized](#about)
 - [Differences between ESM and CJS that cause interop problems](#differences)
 - [How code is transformed transpiling between ESM and CJS](#transpilation)
@@ -43,9 +44,9 @@
 
 <a name="intro"></a>
 
-## $#@&%*!
+## Why care?
 
-Interop between [EcmaScript modules](https://exploringjs.com/impatient-js/ch_modules.html#overview-syntax-of-ecmascript-modules), aka ES modules, aka ESM, aka [JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules), and [CommonJS](https://nodejs.org/api/modules.html), aka CJS, modules is a complicated and confusing matter most JavaScript developers no doubt don't want to have to think about. There are more mission-critical things on which to spend time and brain cycles, namely application logic.
+Interop between [ECMAScript modules](https://exploringjs.com/impatient-js/ch_modules.html#overview-syntax-of-ecmascript-modules), aka ES modules, aka ESM, aka [JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules), and [CommonJS](https://nodejs.org/api/modules.html), aka CJS, modules is a complicated and confusing matter most JavaScript developers no doubt don't want to have to think about. There are more mission-critical things on which to spend time and brain cycles, namely application logic.
 
 Still, it's consequential in the modern JS ecosystem for two reasons:
 
@@ -60,6 +61,58 @@ While you certainly can use a tool that hides away and mostly handles interop co
 This article attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript  development tools.
 
 For those JavaScript developers impatient to get beyond the mess of interop and live now in our bright ESM-first future, I've also included [an addendum about that](#addendum).
+
+<a name="tldr"></a>
+## TL;DR
+
+### To master this topic, read the official docs first.
+
+- Node.js docs: ["Modules: CommonJS modules"](https://nodejs.org/api/modules.html)
+- Node.js docs: ["Modules: ECMAScript modules"](https://nodejs.org/api/esm.html)
+- Node.js docs: ["Modules: Packages"](https://nodejs.org/api/packages.html)
+- MDN Web Docs: ["JavaScript modules"](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
+
+### Extra credit wonk reading. :nerd_face:
+
+- Node.js docs: ["Modules: module API"](https://nodejs.org/api/module.html)
+- Mozilla Hacks: ["ES modules: A cartoon deep dive"](https://hacks.mozilla.org/2018/03/es-modules-a-cartoon-deep-dive/)
+- ECMAScript specification: [Modules](https://tc39.es/ecma262/#sec-modules) (in case it helps… ["How to Read the ECMAScript Specification"](https://timothygu.me/es-howto/))
+
+### :bangbang: Top things to know:
+
+- **ESM is the future**, so strive to author in ESM for any new development.
+
+  - For ESM-first web application development, transpile and bundle with [Rollup](https://rollupjs.org/) and explore [modern web dev](#esm-first-browser) techniques like [buildless dev servers](#buildless). The [rollup-starter-code-splitting]() demo shows a minimal example of how to use Rollup to bundle and code-split an app, but a more robust approach is presented at [Modern Web](https://modern-web.dev/guides/).
+
+  - For ESM-first browser library development, transpile and bundle with [Rollup](https://rollupjs.org/), and follow best practices in [this guide by the Skypack CDN](https://docs.skypack.dev/package-authors/package-checks) and checked by the [@skypack/package-check](https://github.com/skypackjs/package-check) tool. The Github Elements `<time>` custom element is [a good example](https://github.com/github/time-elements).
+
+  - For ESM-first universal development...
+
+  - For ESM-first Node package development, use one TypeScript, Babel (Babel can transpile TypeScript, btw), [ascjs](https://github.com/WebReflection/ascjs), or putout to transpile ESM source to CJS while maintaining separate modules. There's really no strict need to bundle for Node. Also be sure to signal ESM support to package consumers by declaring one or more ESM entrypoints using Node's conditional `"exports"` package.json field.
+
+    Alternatively, though not ESM-first, you can avoid a transpilation step by authoring in CJS and using a thin ESM wrapper.
+
+  - For migrating a CJS Node package to ESM, convert the code, ideally  and then follow this great guide by
+    - (simplest option)
+
+  - For ESM-first Node application development, use Node gte v13, add `"type": "module"` to your root package.json, use a `.js` extension for your application modules, author ESM without a build step, and take care to heed [ESM considerations described in Node's docs](https://nodejs.org/api/esm.html).
+
+
+- **The future isn't quite here yet**, so fallback to pre-ESM support.
+
+  If you prefer to not involve a build step, you can author using CJS
+
+  - To support common browsers without ESM support, primarily IE 11 and non-Chromium Edge, transpile ESM source to IIFE or SystemJS.
+
+  - To support Node before v13, transpile to CJS. One reasonable exception to this, however, is authoring a dual-support package for Node. In that case, it might be simplest to author in CJS and use a lightweight ESM wrapper that re-exports a CJS entry module.
+
+- For the most seamless interop, use a build step involving a tool like Babel, TypeScript, esbuild, Rollup, Webpack, or Parcel that transforms code and adds helpers so imports from CJS and "faux" ESM modules (CJS module with an `exports.esModule` property) work nearly identically to ESM modules.
+
+- CJS and ESM support for default exports *and* named exports in the same module is [fundamentally incompatible](#mixed-exports).
+
+- When authoring a package in ESM targeting Node or universal consumption, [prefer only named exports](#prefer-named-exports).
+
+- When authoring an app in ESM for Node, and importing a CJS module, [prefer only the default import](#prefer-default-import).
 
 ---
 
@@ -290,6 +343,42 @@ import foo from 'foo.cjs'
 
 ...
 
+<a name="mixed-exports"></a>
+### :warning: CJS and ESM support for default exports *and* named exports in the same module is fundamentally incompatible.
+
+How you expect it to work (ESM importing ESM)…
+```javascript
+// -- imported.mjs --------------------
+
+// When ESM imports ESM, both named exports…
+export const foo = 'foo';
+export const bar = 'bar';
+
+// …and default exports happily coexist.
+export default 'baz'
+
+
+// -- importer.mjs --------------------
+import baz, { foo, bar } from './imported.mjs';
+console.log(foo, bar, baz) // => 😃 foo bar baz
+```
+
+How it really works…
+```javascript
+// -- imported.cjs --------------------
+
+// When ESM imports CJS, you can't have both named exports…
+exports.foo = 'foo';
+exports.bar = 'bar';
+
+// …and a default export.
+module.exports = 'baz';
+
+// -- importer.mjs --------------------
+import baz, { foo, bar } from './imported.cjs';
+console.log(foo, bar, baz) // => 😭 undefined undefined baz
+```
+
 ### :warning: Dynamic `import()` caches based on URL, not module
 
 ...
@@ -317,6 +406,101 @@ Only ESM import semantics can directly support WebAssembly as a module, because 
 In CommonJS, the Node [WebAssembly global](https://nodejs.org/api/globals.html#globals_webassembly) currently needs to be used to instantiate `.wasm` ([example](https://www.dynamsoft.com/codepool/use-webassembly-node-js.html)). In ESM, by contrast, `.wasm` can be directly imported in Node ([experimental at the moment](https://nodejs.org/api/esm.html#esm_wasm_modules)), and treated more or less like any other dependency.
 
 Browsers don't yet have this capability, though likely will soon, as well as the [ability to load `.wasm` using script tags](https://github.com/WebAssembly/esm-integration/tree/master/proposals/esm-integration), `<script type="module" src="./app.wasm">`. Until that time, if you wish to take advantage of the ESM `.wasm` import syntax, you'll need to involve a build step, as with [Rollup](https://rollupjs.org/) in conjunction with [@rollup/plugin-wasm](https://github.com/rollup/plugins/tree/master/packages/wasm) or something like [wasm-pack](https://rustwasm.github.io/docs/wasm-pack/commands/build.html#target) to [wrap WASM instantiation](https://rustwasm.github.io/wasm-bindgen/examples/without-a-bundler.html).
+
+<a name="prefer-named-exports"></a>
+### :white_check_mark:  Do prefer named exports when authoring a package in ESM targeting Node or universal consumption
+
+  As a package author, you might write this (admittedly very contrived example)…
+  ```javascript
+  // -- foobarbaz.js --------------------
+  export const foo = 'foo';
+  export const bar = 'bar';
+  export const baz = 'baz';
+  export default foo + bar + baz;
+  ```
+
+  …and transpile it to a CJS "faux" module.
+  ```javascript
+  'use strict';
+
+  Object.defineProperty(exports, '__esModule', { value: true });
+
+  const foo = 'foo';
+  const bar = 'bar';
+  var foobarbaz = 'baz';
+
+  exports.bar = bar;
+  exports.default = foobarbaz;
+  exports.foo = foo;
+  ```
+
+  Consumers of your package will expect the default export to be string `foobarbaz`, but it won't be unless they use a build step involving a transpiler that understands faux ESM modules!
+  ```javascript
+  // -- consumer.mjs --------------------
+  import foobarbaz from 'foobarbaz'
+
+  console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
+  console.log(foobarbaz.default) // => foobarbaz
+
+  // Wut! 😡
+
+
+  // -- consumer.cjs --------------------
+  const foobarbaz = require('foobarbaz')
+
+  // Same deal. Ugh.
+  console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
+  console.log(foobarbaz.default) // => foobarbaz
+  ```
+
+  Avoid confusion by avoiding a default export
+  ```javascript
+  // -- foobarbaz.js --------------------
+  export const foo = 'foo';
+  export const bar = 'bar';
+  export const baz = 'baz';
+  export const foobarbaz = foo + bar + baz;
+
+
+  // -- consumer.js --------------------
+  import { foobarbaz } from 'foobarbaz';
+  // Using `import foobarbaz from 'foobarbaz';` with a transpiler should error
+
+  console.log(foobarbaz) // => foobarbaz
+  ```
+
+#### Related reading
+- [Why I've stopped exporting defaults from my JavaScript modules](https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/)
+- [Why we have banned default exports and you should do the same](https://blog.neufund.org/why-we-have-banned-default-exports-and-you-should-do-the-same-d51fdc2cf2ad)
+- ["Avoid Export Default"](https://basarat.gitbook.io/typescript/main-1/defaultisbad) (in [*TypeScript Deep Dive*](https://basarat.gitbook.io/typescript/))
+- [Rich Harris (creator of Rollup and Svelte creator) musing in a Rollup Github issue about the problems caused by default exports.](https://github.com/rollup/rollup/issues/1078#issuecomment-268286496)
+
+<a name="prefer-default-import"></a>
+### :white_check_mark: Do prefer the default import when authoring an app in ESM for Node, and importing a CJS module
+
+The default import of a CJS module into an ESM module in Node is dependably the value of `exports` from the imported module. Accessing it will never throw and the value will never be `undefined`.<br>
+
+A highly possible scenario.
+```javascript
+// -- imported.cjs ----------------
+
+// It's tempting to think of this as a collection of named exports
+module.exports = {
+  foo: 'foo',
+  bar: 'bar',
+  baz: 'baz'
+}
+
+
+// importer.mjs
+import { foo, bar, baz } from './imported.cjs';
+console.log(foo, bar, baz) // => 💥 SyntaxError: Named export 'bar' not found.
+```
+
+Why?
+```javascript
+
+```
 
 ### :white_check_mark: Do use the `main` and `module` package.json fields when publishing a hybrid package intended for web bundling
 
@@ -370,6 +554,7 @@ Likewise, since full ESM support [arrived in Node v13](https://nodejs.medium.com
 
 These days, it's *possible* to start and end JavaScript development using only ESM throughout.
 
+<a name="esm-first-browser"></a>
 ## ESM-first with browsers
 
 ESM support in browsers opens up new possibilities around improving DX through the practice of so-called "[buildless development](https://buildless.site/)", as well as some [interesting production performance benefits](https://jspm.org/import-map-cdn).
