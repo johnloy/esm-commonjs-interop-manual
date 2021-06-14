@@ -269,6 +269,7 @@ Node's native ESM support since v13 makes it possible to not need a build step a
 
 ### Related reading
 - [Rollup wiki page about "module" fields of package.json](https://github.com/rollup/rollup/wiki/pkg.module)
+- [How to Publish Web Components to NPM](https://justinfagnani.com/2019/11/01/how-to-publish-web-components-to-npm/)
 
 ---
 
