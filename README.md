@@ -42,6 +42,7 @@
   - [Differences between ESM and CJS that cause interop problems](#differences)
   - [How code is transformed transpiling between ESM and CJS](#transpilation)
   - [The role of package.json in interop](#package-json)
+  - [The role of file extensions in interop (.js, .mjs, .cjs)](#file-extensions)
   - [Gotchas, dos, and don'ts](#gotchas-dos-and-donts)
 - [General notes about transpilers and bundlers](#transpilers-and-bundlers)
   - [Bundlers _are_ transpilers too](#bundlers-are-transpilers)
@@ -414,24 +415,76 @@ Publishing dual-support packages
 <a name="package-json"></a>
 ## The role of package.json in interop
 
+<a name="file-extensions"></a>
+## The role of file extensions in interop (.js, .mjs, .cjs)
+
+Related reading
+- [V8 Blog: JavaScript modules](https://v8.dev/features/modules#mjs)
+
 <a name="gotchas-dos-and-donts"></a>
 ## Gotchas, dos, and don'ts
 
-### :warning: ESM import specifiers need a file extension, but extensions are resolved for CJS
+### :warning: Module specifiers for ESM and CJS differ significantly
+
+JavaScript developers have grown used to three behaviors when requiring Node CJS modules that differ when importing ESM.
+
+- CJS module specifiers do not need an extension, while ESM specifiers do, except in the case where importing an npm package ESM entrypoint
+
+- CJS module specifiers
 
 ...
 
 ```javascript
-import foo from 'foo.cjs'
+import foo from './foo.cjs'
 ```
-
-### :warning: Node doesn't require file extensions in ESM for packages
-
-...
 
 ### :warning: The same ESM import specifier might not work both in Node and browsers
 
 ...
+
+### :warning: TypeScript doesn't support files with .mjs or .cjs extensions
+
+This most affects the case where you want to output .mjs, because CJS is assumed by Node and transpilers when consuming .js files.
+
+For more details, see this [open TypeScript issue](https://github.com/microsoft/TypeScript/issues/18442).
+
+This means you cannot simply do something like…
+
+```shell
+tsc index.ts imported.ts && node index.mjs
+```
+
+The output would be…
+
+```javascript
+// tsconfig: "module": "commonjs"
+var x = require("./imported"); // Node treats imported as CJS
+
+// tsconfig: "module": "esnext"
+import x from "./imported.js" // Node treats imported as CJS
+```
+
+Your build script needs to have a step following tsc compilation that renames files, like:
+
+```shell
+$ npm install renamer -g
+$ tsc
+$ renamer -regex --find '\.js^' --replace '.mjs' './outDir/**/*.js'
+```
+
+Unfortunately, this doesn't play nicely with the `--watch` option for `tsc`.
+
+### Related reading
+
+- TypeScript Github issues:
+  - [Support .mjs output #18442](https://github.com/microsoft/TypeScript/issues/18442)
+  - [Support ".mjs" input files #27957](https://github.com/microsoft/TypeScript/issues/27957)
+- [TypeScript, ES Modules & Micheal Jackson](https://medium.com/@iamstan/typescript-es-modules-micheal-jackson-2040216be793)
+- [Demonstration of .mjs type checking issue](https://github.com/frank-dspeed/example-typechecking-mjs)
+
+### :warning: Dual-support packages are at risk of both versions being used in the same application
+
+https://nodejs.org/api/packages.html#packages_dual_package_hazard
 
 <a name="mixed-exports"></a>
 ### :warning: CJS and ESM support for default exports *and* named exports in the same module is fundamentally incompatible.
