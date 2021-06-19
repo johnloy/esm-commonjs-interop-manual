@@ -64,15 +64,15 @@ Interop between [ECMAScript modules](https://exploringjs.com/impatient-js/ch_mod
 
 Still, it's consequential in the modern JS ecosystem for two reasons:
 
-- Developers want to make use of the full treasury of NPM packages as dependencies, regardless of their module format, and regardless of the ultimate execution runtime environment (Node, browsers, cloud functions etc.).
+- Developers want to make use of the full treasury of NPM packages as dependencies, regardless of their module format, and regardless of the ultimate execution runtime environment (Node, browsers, workers).
 
 - Developers increasingly enjoy authoring JavaScript as ESM, but still need to publish for execution in older runtime environments that don't fully support it.
 
 Put another way, developers want to pretend everything is ESM and that it "just works". Unfortunately, however, [it doesn't always](https://redfin.engineering/node-modules-at-war-why-commonjs-and-es-modules-cant-get-along-9617135eeca1).
 
-While you certainly can use a tool that hides away and mostly handles interop concerns for you through encapsulated configuration of transpilation tools (Babel, TypeScript, bundlers, etc.), as many [front-end](https://create-react-app.dev/docs/supported-browsers-features) and [full-stack](https://nextjs.org/docs/advanced-features/customizing-babel-config) app framework build tools do, understanding the issues and solutions regarding module interop illuminates what those tools do under the hood. Knowledge is power, should something not "just work", which is bound to happen occassionally, given the [crazy number of possible scenarios](https://sokra.github.io/interop-test/). It also informs you to be selective and intentional about your tools, choosing the most appropriate one/s for a given use case (for example, bundlers probably aren't the best tool when publishing a Node library).
+While you certainly can use a tool that hides away and mostly handles interop concerns for you through encapsulated configuration of transpilation tools (Babel, TypeScript, bundlers, etc.), as many [front-end](https://create-react-app.dev/docs/supported-browsers-features) and [full-stack](https://nextjs.org/docs/advanced-features/customizing-babel-config) web app framework build tools do, understanding the issues and solutions regarding module interop illuminates what those tools do under the hood. Knowledge is power, should something not "just work", which is bound to happen occassionally, given the [crazy number of possible scenarios](https://sokra.github.io/interop-test/). It also informs you to be selective and intentional about your tools, choosing the most appropriate one/s for a given use case (for example, bundlers probably aren't the best tool when publishing a Node library).
 
-This article attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript  development tools.
+This reference attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript  development tools.
 
 For those JavaScript developers impatient to get beyond the mess of interop and live now in our bright ESM-first future, I've also included [an addendum about that](#addendum).
 
@@ -86,7 +86,7 @@ For those JavaScript developers impatient to get beyond the mess of interop and 
 - Node.js docs: ["Modules: Packages"](https://nodejs.org/api/packages.html)
 - MDN Web Docs: ["JavaScript modules"](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
 
-### Extra credit wonk reading. :nerd_face:
+### :nerd_face: Extra credit reading.
 
 - The excellent writings of Dr. Axel Rauschmeyer
   - [Exploring ES6: Modules](https://exploringjs.com/es6/ch_modules.html)
@@ -216,16 +216,15 @@ Most browser and Node development tools, at least the CLI-oriented ones, run in 
 
 ## Use case: Browser application
 
-Chances are, as a JavaScript developer you most often encounter module interop when developing web applications for execution in the browser. This is because you likely author those using ESM syntax, but depend on packages from NPM, a majority of which are currently published as CJS or UMD modules (the JS ones, anyway).
+Chances are, as a JavaScript developer you most often encounter module interop when developing web applications using ESM syntax, while depending on a mixture of CJS/UMD and ESM packages installed using NPM.
 
-Browsers do not understand CJS, however, so need to transpile and normalize all modules used, regardless of original format, to one of:
+Browsers do not understand CJS, however, so a transpilation step is necessary to normalize modules into something browsers can run. This can take one of several forms:
 
-a. A single bundle file with an IIFE (Immediately Invoked Function Expression) wrapper (example)
-b. Multiple bundled and code-split files with IIFE wrappers, in tandem with a module loader "runtime" (example)
-c. A single ESM bundle file (example)
-d. Multiple bundled and code-split ESM files (example)
+- A single bundle file with an IIFE (Immediately Invoked Function Expression) wrapper (example)
+- Multiple bundled and code-split files with IIFE wrappers, in tandem with a module loader "runtime" (example)
+- A single ESM bundle file (example)
+- Multiple bundled and code-split ESM files (example)
 
-Module normalization occurs when a transpiler or bundler traverses a codebase, starting at entrypoint files, to read it into a graph of dependencies.  While doing this, the code of source files is parsed into an [AST (Abstract Syntax Tree)](https://astexplorer.net/#/gist/3aa601cf2aa498ab692d6d680fc26962/0fc5dc8feff3c4628687d0080f5931848be763f3) held in memory, and from this representation transformed and combined into the final faux modules output. Both Webpack and Rollup use Acorn.
 
 Using the popular Webpack and Parcel bundlers, all traces of both ESM and CJS get wiped out in the final bundle output. They are replaced with faux modules, implemented using function scoping and a custom module cache in a bundler "[runtime](https://gist.github.com/johnloy/c7faabf72b358f8bc96ef9699031643e#file-bundle-js-L34-L88)". So, at the time application code executes in browsers, ESM-CJS interop is no longer a concern.
 
@@ -532,8 +531,6 @@ import()
 
 ### :warning: Bundlers don't understand the Node-only workaround to `require()` in ESM
 
-### :warning: Node interprets `exports.foo = 'foo'` and `module.exports = { foo: 'foo' }` differently importing into ESM
-
 ### :warning: Transpiling ESM to CJS changes `import()` behavior
 
 The `import()` syntax is converted to a `require()` wrapped in a promise. That means, if the imported module isn't also transpiled, it can't be required, because `import()` always expects its specifier to refer to an ESM module. Also, ESM and CJS use differednt import/require caches and caching behaviors.
@@ -553,64 +550,69 @@ Browsers don't yet have this capability, though likely will soon, as well as the
 <a name="prefer-named-exports"></a>
 ### :white_check_mark:  Do prefer named exports when authoring a package in ESM targeting Node or universal consumption
 
-  As a package author, you might write this (admittedly very contrived example)…
-  ```javascript
-  // -- foobarbaz.js --------------------
-  export const foo = 'foo';
-  export const bar = 'bar';
-  export const baz = 'baz';
-  export default foo + bar + baz;
-  ```
+As a package author, you might write this (admittedly very contrived example)…
+```javascript
+// -- foobarbaz.js --------------------
+export const foo = 'foo';
+export const bar = 'bar';
+export const baz = 'baz';
+export default foo + bar + baz;
+```
 
-  …and transpile it to a CJS "faux" module.
-  ```javascript
-  'use strict';
+…and transpile it to a CJS "faux" module.
+```javascript
+"use strict";
 
-  Object.defineProperty(exports, '__esModule', { value: true });
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.baz = exports.bar = exports.foo = void 0;
+const foo = 'foo';
+exports.foo = foo;
+const bar = 'bar';
+exports.bar = bar;
+const baz = 'baz';
+exports.baz = baz;
 
-  const foo = 'foo';
-  const bar = 'bar';
-  var foobarbaz = 'baz';
+var _default = foo + bar + baz;
 
-  exports.bar = bar;
-  exports.default = foobarbaz;
-  exports.foo = foo;
-  ```
+exports.default = _default;
+```
 
-  Consumers of your package will expect the default export to be string `foobarbaz`, but it won't be unless they use a build step involving a transpiler that understands faux ESM modules!
-  ```javascript
-  // -- consumer.mjs --------------------
-  import foobarbaz from 'foobarbaz'
+Consumers of your package will expect the default export to be string `foobarbaz`, but it won't be unless they use a build step involving a transpiler that understands faux ESM modules!
+```javascript
+// -- consumer.mjs --------------------
+import foobarbaz from 'foobarbaz'
 
-  console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
-  console.log(foobarbaz.default) // => foobarbaz
+console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
+console.log(foobarbaz.default) // => foobarbaz
 
-  // Wut! 😡
-
-
-  // -- consumer.cjs --------------------
-  const foobarbaz = require('foobarbaz')
-
-  // Same deal. Ugh.
-  console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
-  console.log(foobarbaz.default) // => foobarbaz
-  ```
-
-  Avoid confusion by avoiding a default export
-  ```javascript
-  // -- foobarbaz.js --------------------
-  export const foo = 'foo';
-  export const bar = 'bar';
-  export const baz = 'baz';
-  export const foobarbaz = foo + bar + baz;
+// Wut! 😡
 
 
-  // -- consumer.js --------------------
-  import { foobarbaz } from 'foobarbaz';
-  // Using `import foobarbaz from 'foobarbaz';` with a transpiler should error
+// -- consumer.cjs --------------------
+const foobarbaz = require('foobarbaz')
 
-  console.log(foobarbaz) // => foobarbaz
-  ```
+// Same deal. Ugh.
+console.log(foobarbaz) // => { bar: 'bar', baz: 'baz', default: 'foobarbaz', foo: 'foo' }
+console.log(foobarbaz.default) // => foobarbaz
+```
+
+Avoid confusion by avoiding a default export
+```javascript
+// -- foobarbaz.js --------------------
+export const foo = 'foo';
+export const bar = 'bar';
+export const baz = 'baz';
+export const foobarbaz = foo + bar + baz;
+
+
+// -- consumer.js --------------------
+import { foobarbaz } from 'foobarbaz';
+// Using `import foobarbaz from 'foobarbaz';` with a transpiler should error
+
+console.log(foobarbaz) // => foobarbaz
+```
 
 Of course, if you aren't planning to publish your module as a package and you use a transpilation step, using default exports doesn't run the risk of this problem. A good example of such a scenario is writing custom React components when using create-react-app ([CRA recommends using default exports](https://create-react-app.dev/docs/importing-a-component#dangerbuttonjs)). Under the hood, CRA transpiles ESM using Webpack, and handles faux modules intuitively.
 
@@ -644,12 +646,7 @@ module.exports = {
 
 // importer.mjs
 import { foo, bar, baz } from './imported.cjs';
-console.log(foo, bar, baz) // => 💥 SyntaxError: Named export 'bar' not found.
-```
-
-Why?
-```javascript
-
+console.log(foo, bar, baz); // => 💥 SyntaxError: Named export 'bar' not found.
 ```
 
 ### :white_check_mark: Do use the `main` and `module` package.json fields when publishing a hybrid package intended for web bundling
@@ -697,6 +694,8 @@ Because imports of ESM into CJS are always async, accessed by way of promises re
 
 <a name="transpilers-and-bundlers"></a>
 ## General notes about transpilers and bundlers
+
+Module transpilation occurs when a transpiler or bundler traverses a codebase, starting at entrypoint files, to read it into a data structure representing the graph of dependencies.  While doing this, the code of source files is parsed into an [AST (Abstract Syntax Tree)](https://astexplorer.net/#/gist/3aa601cf2aa498ab692d6d680fc26962/0fc5dc8feff3c4628687d0080f5931848be763f3) held in memory, and from this representation transformed and combined into the final faux modules output. Both Webpack and Rollup use Acorn.
 
 <a name="bundlers-are-transpilers"></a>
 ## Bundlers _are_ transpilers too
