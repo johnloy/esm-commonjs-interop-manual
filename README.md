@@ -612,6 +612,8 @@ Browsers don't yet have this capability, though likely will soon, as well as the
   console.log(foobarbaz) // => foobarbaz
   ```
 
+Of course, if you aren't planning to publish your module as a package and you use a transpilation step, using default exports doesn't run the risk of this problem. A good example of such a scenario is writing custom React components when using create-react-app ([CRA recommends using default exports](https://create-react-app.dev/docs/importing-a-component#dangerbuttonjs)). Under the hood, CRA transpiles ESM using Webpack, and handles faux modules intuitively.
+
 #### Related reading
 - [Why I've stopped exporting defaults from my JavaScript modules](https://humanwhocodes.com/blog/2019/01/stop-using-default-exports-javascript-module/)
 - [Default exports = bad](https://ilikekillnerds.com/2019/08/default-exports-bad/)
