@@ -52,7 +52,7 @@
   - [Webpack](#webpack)
   - [Parcel](#parcel)
   - [esbuild](#esbuild)
-- :sparkles: [Addendum: Why and How to Go ESM-first](#addendum)
+- :sparkles: [Appendix: Why and How to Go ESM-first](#going-esm-first)
 
 ---
 
@@ -72,12 +72,13 @@ Put another way, developers want to pretend everything is ESM and that it "just 
 
 While you certainly can use a tool that hides away and mostly handles interop concerns for you through encapsulated configuration of transpilation tools (Babel, TypeScript, bundlers, etc.), as many [front-end](https://create-react-app.dev/docs/supported-browsers-features) and [full-stack](https://nextjs.org/docs/advanced-features/customizing-babel-config) web app framework build tools do, understanding the issues and solutions regarding module interop illuminates what those tools do under the hood. Knowledge is power, should something not "just work", which is bound to happen occassionally, given the [crazy number of possible scenarios](https://sokra.github.io/interop-test/). It also informs you to be selective and intentional about your tools, choosing the most appropriate one/s for a given use case (for example, bundlers probably aren't the best tool when publishing a Node library).
 
-This reference attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript  development tools.
+This reference attempts to tie together disparate useful bits of info about module interop, which you would otherwise need to forage from many different sources, into the big picture. It focuses primarily on understanding and properly using interop-related settings in common JavaScript development tools.
 
-For those JavaScript developers impatient to get beyond the mess of interop and live now in our bright ESM-first future, I've also included [an addendum about that](#addendum).
 
 <a name="tldr"></a>
 ## TL;DR
+
+For JavaScript developers impatient to get beyond the mess of interop and live now in our bright ESM-first future, check out the [appendix about that](#going-esm-first).
 
 ### To master this topic, read the official docs first.
 
@@ -174,7 +175,7 @@ A section of this reference is devoted to each of the following.
 > - Building a browser application, *without* using a transpilation step
 > - Build a browser library, *without* using a transpilation step
 >
-> These involve use of only ESM modules, and target modern browsers with full ESM support. For more about ESM-only web development, check out the [addendum, "Why and how to go ESM-first"](#addendum)
+> These involve use of only ESM modules, and target modern browsers with full ESM support. For more about ESM-only web development, check out the [appendix, "Why and how to go ESM-first"](#going-esm-first)
 >
 
 ### Transpilation approach
@@ -423,21 +424,31 @@ Related reading
 <a name="gotchas-dos-and-donts"></a>
 ## Gotchas, dos, and don'ts
 
-### :warning: Module specifiers for ESM and CJS differ significantly
+### :warning: Module resolution for ESM and CJS differs significantly
 
-JavaScript developers have grown used to three behaviors when requiring Node CJS modules that differ when importing ESM.
+JavaScript developers have grown used to three behaviors when requiring modules into CJS modules that differ when importing modules into ESM.
 
-- CJS module specifiers do not need an extension, while ESM specifiers do, except in the case where importing an npm package ESM entrypoint
+- [module specifiers](https://nodejs.org/api/esm.html#esm_terminology) (paths) do not need an extension, e.g. `require('./my-module'); // my-module.js`
+- requiring a directory resolves to `[directory]/index.js` file
+- all required modules resolve to an actual file via [this algorithm](https://nodejs.org/api/modules.html#modules_all_together)
 
-- CJS module specifiers
-
-...
+By default, the only cases in which Node allows omitting the module file extension within ESM are when importing a [core module](https://nodejs.org/api/modules.html#modules_core_modules) or package using a [bare specifier](https://nodejs.org/api/esm.html#esm_terminology). And, the package import case is only allowed when importing the package [main](https://nodejs.org/api/packages.html#packages_main) entrypoint or one of the entrypoints defined using [package `exports`](https://nodejs.org/api/packages.html#packages_exports). Read more about this in [the Node ESM docs](https://nodejs.org/api/esm.html#esm_mandatory_file_extensions).
 
 ```javascript
-import foo from './foo.cjs'
+import foo from './foo.cjs'; // extension required, but foo.cjs is treated as CJS
+import { bar } from './bar.mjs'; // extension required
+import fs from 'fs'; // no extension required, because fs is a core module
+import lodash from 'lodash'; // no extension required
+import { isNumeric } from 'mathjs/number'; // no extension required, because of "exports" map
 ```
 
-### :warning: The same ESM import specifier might not work both in Node and browsers
+By default, Node also does not resolve a directory import specifier to its index file.
+
+If you want the traditional CJS extension and index file resolution behaviors, there is an [experimental cli flag `--experimental-specifier-resolution=node`](https://nodejs.org/api/esm.html#esm_customizing_esm_specifier_resolution_algorithm). Theoretically, you could also emulate the behavior using [the `resolve()` module loader hook](https://nodejs.org/api/esm.html#esm_resolve_specifier_context_defaultresolve), though that's unnecessary now with the option of the cli flag.
+
+Because ESM support in Node strives to be ECMAScript spec compliant, rather than using the traditional CJS resolution algorithm, modules are resolved as [URLs](https://url.spec.whatwg.org/) (just like in browsers). Read more about this in [the Node ESM docs](https://nodejs.org/api/esm.html#esm_resolution_algorithm).
+
+### :warning: Node and transpilers
 
 ...
 
@@ -739,9 +750,9 @@ https://krasimirtsonev.com/blog/article/transpile-to-esm-with-babel
 
 ---
 
-<a name="addendum"></a>
+<a name="going-esm-first"></a>
 
-## :sparkles: Addendum: Why and how to go ESM-first
+## :sparkles: Appendix: Why and how to go ESM-first
 
 You no longer *need* bundling, or even any kind of of build step, any more during web development, thanks to [broad browser support](https://caniuse.com/?search=javascript%20modules) of ESM, and [modern tooling](https://modern-web.dev/) to help take advantage of that. Of course, for production, bundling is still probably [optimal for performance reasons](https://v8.dev/features/modules#performance), at least until [resource bundling](https://github.com/WICG/resource-bundles) is possible (part of an emerging suite of standards to support better [website packaging](https://github.com/WICG/webpackage)).
 
