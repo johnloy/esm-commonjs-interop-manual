@@ -448,9 +448,7 @@ If you want the traditional CJS extension and index file resolution behaviors, t
 
 Because ESM support in Node strives to be ECMAScript spec compliant, rather than using the traditional CJS resolution algorithm, modules are resolved as [URLs](https://url.spec.whatwg.org/) (just like in browsers). Read more about this in [the Node ESM docs](https://nodejs.org/api/esm.html#esm_resolution_algorithm).
 
-### :warning: Node and transpilers
-
-...
+Adding another wrinkle to resolution difference quirks, TypeScript and transpilers don't enforce the Node ESM resolution rules.
 
 ### :warning: TypeScript doesn't support files with .mjs or .cjs extensions
 
